@@ -1,0 +1,102 @@
+name: Release new version
+
+permissions:
+  contents: write
+
+env:
+  PROJECT_NAME: gstype
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_override:
+        type: string
+        description: 'Override version'
+        required: false
+
+jobs:
+#  release:
+#    runs-on: ubuntu-latest
+#    steps:
+#      - uses: actions/checkout@v3
+#
+#      - name: Rust Cache
+#        uses: Swatinem/rust-cache@v2.2.0
+#
+#      #      - name: Setup tmate session
+#      #        uses: mxschmitt/action-tmate@v3
+#
+#      - name: Calculate new version
+#        id: tag_version
+#        if: ${{ !inputs.version_override }}
+#        uses: mathieudutour/github-tag-action@v6.1
+#        with:
+#          github_token: ${{ secrets.GITHUB_TOKEN }}
+#          dry_run: true
+#
+#      - uses: haya14busa/action-cond@v1
+#        id: version
+#        with:
+#          cond: ${{ !inputs.version_override }}
+#          if_true: ${{ steps.tag_version.outputs.new_version }}
+#          if_false: ${{ inputs.version_override }}
+#
+#      - name: Stop workflow if there hasn't been any new commit
+#        if: ${{ !steps.version.outputs.value }}
+#        run: exit 1
+#
+#      - name: Bump version of Cargo.toml
+#        run: |
+#          sed -i -e 's/^version = ".*"$/version = "${{ steps.version.outputs.value }}"/' Cargo.toml
+#          cargo update -p ${PROJECT_NAME}
+#
+#      - name: Commit and tag the new version
+#        uses: EndBug/add-and-commit@v9
+#        with:
+#          add: Cargo.toml Cargo.lock
+#          message: Bump version to ${{ steps.version.outputs.value }}
+#          tag: v${{ steps.version.outputs.value }} --force
+#          tag_push: --force
+#
+#      - name: Create a GitHub release
+#        id: create-release
+#        uses: softprops/action-gh-release@v1
+#        with:
+#          tag_name: v${{ steps.version.outputs.value }}
+#          name: ${{ steps.version.outputs.value }}
+#          body: ${{ steps.tag_version.outputs.changelog }}
+#    outputs:
+#      version: ${{ steps.version.outputs.value }}
+#      tag: v${{ steps.version.outputs.value }}
+
+  build:
+#    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: docker://ghcr.io/steamdeckhomebrew/holo-toolchain-rust:latest
+        with:
+          entrypoint: /usr/sbin/cargo
+          command: build
+          args: --release
+
+      - name: Create archive
+        id: archive
+        run: |
+          target_dir="$(cargo metadata --format-version=1 --no-deps | jq -r .target_directory)/release"
+          archive="${PROJECT_NAME}"
+          archive_path="$(pwd)/${archive}.tar.gz"
+          tempdir=$(mktemp -d)
+          cp ${target_dir}/${PROJECT_NAME} ${tempdir}
+          ( cd ${tempdir} && tar acf ${archive_path} ${PROJECT_NAME} )
+          rm -rf $tempdir
+          echo "archive_path=${archive_path}" >>$GITHUB_OUTPUT
+
+#      - name: Release
+#        id: upload_asset
+#        uses: softprops/action-gh-release@v1
+#        with:
+#          files: ${{ steps.archive.outputs.archive_path }}
+#          fail_on_unmatched_files: true
+#          tag_name: ${{ needs.release.outputs.tag }}
