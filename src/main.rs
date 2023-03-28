@@ -98,6 +98,7 @@ impl Dispatch<gamescope_input_method::GamescopeInputMethod, AppData> for AppStat
             if state.running {
                 im.set_string(data.text.clone());
                 im.commit(serial);
+                // im.destroy();
                 state.running = false;
             }
         }
@@ -120,4 +121,7 @@ fn main() {
         event_queue.blocking_dispatch(&mut state).unwrap();
     }
     event_queue.roundtrip(&mut state).unwrap();
+
+    // I have to wait a bit or Steam will crash.
+    std::thread::sleep(std::time::Duration::from_millis(100));
 }
