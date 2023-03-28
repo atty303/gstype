@@ -77,7 +77,7 @@ jobs:
 
       - uses: docker://ghcr.io/steamdeckhomebrew/holo-toolchain-rust:latest
         with:
-          args: cargo build --release
+          args: sh -c "rustup default stable && cargo build --release"
 
       - name: Create archive
         id: archive
