@@ -1,10 +1,14 @@
+use wayland_client;
 use wayland_client::{Connection, Dispatch, QueueHandle};
 use wayland_client::protocol::{wl_registry, wl_seat};
 
-use protocol::gamescope_input_method;
-use protocol::gamescope_input_method_manager;
+pub mod __interfaces {
+    use wayland_client::protocol::__interfaces::*;
+    wayland_scanner::generate_interfaces!("./protocol/gamescope-input-method.xml");
+}
+use self::__interfaces::*;
 
-mod protocol;
+wayland_scanner::generate_client_code!("./protocol/gamescope-input-method.xml");
 
 #[derive(Clone)]
 struct AppData {
