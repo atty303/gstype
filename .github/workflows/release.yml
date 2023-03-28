@@ -77,9 +77,7 @@ jobs:
 
       - uses: docker://ghcr.io/steamdeckhomebrew/holo-toolchain-rust:latest
         with:
-          entrypoint: /usr/sbin/cargo
-          command: build
-          args: --release
+          args: cargo build --release
 
       - name: Create archive
         id: archive
