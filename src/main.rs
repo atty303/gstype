@@ -26,7 +26,8 @@ impl AppState {
     fn create_im(&mut self, qh: &QueueHandle<AppState>, data: &AppData) {
         if let (Some(seat), Some(imm)) = (&self.seat, &self.imm) {
             if self.im.is_none() {
-                self.im = Some(imm.create_input_method(&seat, qh, data.clone()))
+                self.im = Some(imm.create_input_method(&seat, qh, data.clone()));
+                log::debug!("create_input_method: {:?}", self.im);
             }
         }
     }
@@ -41,6 +42,7 @@ impl Dispatch<wl_registry::WlRegistry, AppData> for AppState {
         _: &Connection,
         qh: &QueueHandle<Self>,
     ) {
+        log::debug!("{:?}", &event);
         if let wl_registry::Event::Global { name, interface, version } = event {
             match &interface[..] {
                 "wl_seat" => {
@@ -66,6 +68,7 @@ impl Dispatch<wl_seat::WlSeat, AppData> for AppState {
         _: &Connection,
         qh: &QueueHandle<Self>,
     ) {
+        log::debug!("{:?}", &event);
         if let wl_seat::Event::Name { name: _ } = event {
             state.seat = Some(seat.clone());
             state.create_im(qh, data);
@@ -77,11 +80,12 @@ impl Dispatch<gamescope_input_method_manager::GamescopeInputMethodManager, ()> f
     fn event(
         _: &mut Self,
         _: &gamescope_input_method_manager::GamescopeInputMethodManager,
-        _: gamescope_input_method_manager::Event,
+        event: gamescope_input_method_manager::Event,
         _: &(),
         _: &Connection,
         _: &QueueHandle<Self>,
     ) {
+        log::debug!("{:?}", &event);
     }
 }
 
@@ -94,18 +98,28 @@ impl Dispatch<gamescope_input_method::GamescopeInputMethod, AppData> for AppStat
         _: &Connection,
         _: &QueueHandle<Self>,
     ) {
-        if let (gamescope_input_method::Event::Done { serial }, Some(im)) = (event, &state.im) {
-            if state.running {
-                im.set_string(data.text.clone());
-                im.commit(serial);
-                // im.destroy();
+        log::debug!("{:?}", &event);
+        match (event, &state.im) {
+            (gamescope_input_method::Event::Done { serial }, Some(im)) => {
+                if state.running {
+                    im.set_string(data.text.clone());
+                    im.commit(serial);
+                    // im.destroy();
+                    state.running = false;
+                }
+            },
+            (gamescope_input_method::Event::Unavailable, _) => {
+                println!("Gamescope Input Method is unavailable");
                 state.running = false;
-            }
+            },
+            _ => ()
         }
     }
 }
 
 fn main() {
+    env_logger::init();
+
     let text = std::env::args().skip(1).collect::<Vec<String>>().join(" ");
 
     let conn = Connection::connect_to_env().expect("Failed to connect to Gamescope");
